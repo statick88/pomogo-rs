@@ -23,6 +23,16 @@ BarWidget {
   // The TUI writes once a second; allow a few missed beats before hiding.
   readonly property int staleAfterSecs: 4
 
+  // The widget needs the `pomogo` command: the TUI is what writes the state
+  // file and what the clicks drive. Probe for the command so a missing
+  // install is reported in the bar instead of leaving an empty slot that
+  // looks like a broken widget.
+  property bool pomogoInstalled: true
+  property bool pomogoProbed: false
+
+  readonly property bool missing: pomogoProbed && !pomogoInstalled
+  readonly property bool showWhenMissing: String(setting("whenMissing", "Show")) === "Show"
+
   property var pomo: null
   property real now: Date.now() / 1000
 
@@ -49,7 +59,8 @@ BarWidget {
   readonly property var nudgeTitles: ({ eyes: "Rest your eyes", water: "Drink some water", stretch: "Stand up and stretch" })
 
   // Nerd Font glyphs, matching the rest of the Omarchy bar.
-  readonly property string glyph: nudge !== "" && nudgeGlyphs[nudge] ? nudgeGlyphs[nudge]
+  readonly property string glyph: missing ? "󰅚"
+    : nudge !== "" && nudgeGlyphs[nudge] ? nudgeGlyphs[nudge]
     : idle ? "󰔛" : paused ? "󰏤" : onBreak ? "󰅶" : "󰔟"
 
   function hm(secs) {
@@ -76,6 +87,7 @@ BarWidget {
   readonly property string taskText: alive && pomo.task ? String(pomo.task) : ""
 
   readonly property string labelText: {
+    if (missing) return showWhenMissing ? glyph : ""
     if (!alive) return ""
     if (idle) return showWhenIdle ? glyph : ""
     if (iconOnly) return glyph
@@ -86,6 +98,14 @@ BarWidget {
   }
 
   readonly property string tooltip: {
+    if (missing) {
+      return [
+        "PomoGo is not installed",
+        "The pomogo command was not found on PATH",
+        "Install it with: yay -S pomogo",
+        "https://github.com/Ibnu-Afdel/pomogo-rs#install"
+      ].join("\n")
+    }
     if (!alive) return ""
     if (idle) return ["PomoGo is ready", todayText, "Right click to start"].filter(function(l) { return l !== "" }).join("\n")
     var phase = pomo.session_type === "work" ? "Focus" : pomo.session_type === "long_break" ? "Long break" : "Break"
@@ -137,6 +157,27 @@ BarWidget {
       root.now = Date.now() / 1000
       stateFile.reload()
     }
+  }
+
+  // Looks for the `pomogo` command. `command -v` is a shell builtin, so the
+  // probe asks a shell rather than relying on `which` being installed.
+  Process {
+    id: probe
+    command: ["sh", "-c", "command -v pomogo >/dev/null 2>&1"]
+    onExited: function(exitCode) {
+      root.pomogoInstalled = exitCode === 0
+      root.pomogoProbed = true
+    }
+  }
+
+  // Probes at startup and every half minute, so a command installed while the
+  // bar is running is picked up without restarting the shell.
+  Timer {
+    interval: 30000
+    running: true
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: if (!probe.running) probe.running = true
   }
 
   WidgetButton {
