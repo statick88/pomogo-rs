@@ -108,7 +108,7 @@ BarWidget {
       return [
         "PomoGo is not installed",
         "The pomogo command was not found on PATH",
-        "Install it with: yay -S pomogo",
+        "Install the pomogo package for your system",
         "https://github.com/Ibnu-Afdel/pomogo-rs#install"
       ].join("\n")
     }
