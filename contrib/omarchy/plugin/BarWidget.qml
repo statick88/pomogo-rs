@@ -59,9 +59,12 @@ BarWidget {
   readonly property var nudgeTitles: ({ eyes: "Rest your eyes", water: "Drink some water", stretch: "Stand up and stretch" })
 
   // Nerd Font glyphs, matching the rest of the Omarchy bar.
-  readonly property string glyph: missing ? "󰅚"
-    : nudge !== "" && nudgeGlyphs[nudge] ? nudgeGlyphs[nudge]
+  readonly property string glyph: nudge !== "" && nudgeGlyphs[nudge] ? nudgeGlyphs[nudge]
     : idle ? "󰔛" : paused ? "󰏤" : onBreak ? "󰅶" : "󰔟"
+
+  // A package that is not there. Only used when nothing is running, so a live
+  // session always keeps its own glyph.
+  readonly property string missingGlyph: "󰅚"
 
   function hm(secs) {
     var mins = Math.floor(Math.max(0, secs || 0) / 60)
@@ -87,8 +90,10 @@ BarWidget {
   readonly property string taskText: alive && pomo.task ? String(pomo.task) : ""
 
   readonly property string labelText: {
-    if (missing) return showWhenMissing ? glyph : ""
-    if (!alive) return ""
+    // A live session always wins. The TUI is what writes the state file, so a
+    // session proves the command is installed even when the probe misses it,
+    // which happens when the bar's PATH differs from the interactive shell's.
+    if (!alive) return missing && showWhenMissing ? missingGlyph : ""
     if (idle) return showWhenIdle ? glyph : ""
     if (iconOnly) return glyph
     if (vertical) return glyph + "\n" + clockText.split(":").slice(-2)[0]
@@ -98,7 +103,8 @@ BarWidget {
   }
 
   readonly property string tooltip: {
-    if (missing) {
+    if (!alive) {
+      if (!missing) return ""
       return [
         "PomoGo is not installed",
         "The pomogo command was not found on PATH",
@@ -106,7 +112,6 @@ BarWidget {
         "https://github.com/Ibnu-Afdel/pomogo-rs#install"
       ].join("\n")
     }
-    if (!alive) return ""
     if (idle) return ["PomoGo is ready", todayText, "Right click to start"].filter(function(l) { return l !== "" }).join("\n")
     var phase = pomo.session_type === "work" ? "Focus" : pomo.session_type === "long_break" ? "Long break" : "Break"
     var lines = []

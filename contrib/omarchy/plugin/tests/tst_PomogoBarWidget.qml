@@ -113,13 +113,15 @@ TestCase {
     verify(!shows(widget), "the diagnostic ignores the whenMissing setting")
   }
 
-  function test_missing_command_beats_a_live_session() {
-    // A live state file cannot exist without the command, but if one shows up
-    // anyway the missing dependency is still the thing to report.
+  function test_live_session_wins_over_a_missing_probe() {
+    // The probe runs with the bar process's PATH, which can differ from the
+    // interactive shell's, so a live session must outrank a missing probe.
     var widget = withState({}, 127)
-    verify(shows(widget), "the widget asks for no label when the command is missing")
-    verify(widget.tooltip.indexOf("not installed") !== -1,
-      "the missing dependency is not reported: " + widget.tooltip)
+    verify(shows(widget), "the widget hides a live session because the probe missed the command")
+    verify(/^\S+ \d{2}:\d{2}$/.test(widget.labelText),
+      "unexpected label for a live session: " + widget.labelText)
+    verify(widget.tooltip.indexOf("not installed") === -1,
+      "a live session is reported as missing: " + widget.tooltip)
   }
 
   function test_installed_command_does_not_report_a_missing_dependency() {

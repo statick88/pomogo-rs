@@ -24,4 +24,11 @@ if [[ -z "$runner" ]]; then
   exit 127
 fi
 
+# Run headless. A graphical session exports QT_QPA_PLATFORM=wayland;xcb and
+# QT_QPA_PLATFORMTHEME=gtk3, and the GTK theme initializes GTK, which needs an
+# X display, so on a headless machine the runner would abort before the first
+# test. The suite renders nothing, so force a platform and an empty theme.
+export QT_QPA_PLATFORM=offscreen
+export QT_QPA_PLATFORMTHEME=
+
 exec "$runner" -import "$here/stubs" -input "$here"
