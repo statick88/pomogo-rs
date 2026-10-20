@@ -106,9 +106,9 @@ BarWidget {
     if (!alive) {
       if (!missing) return ""
       return [
-        "PomoGo is not installed",
-        "The pomogo command was not found on PATH",
-        "Install the pomogo package for your system",
+        "PomoGo was not found on PATH",
+        "The bar could not find the pomogo command",
+        "Install it where the bar can reach it",
         "https://github.com/Ibnu-Afdel/pomogo-rs#install"
       ].join("\n")
     }
@@ -164,11 +164,13 @@ BarWidget {
     }
   }
 
-  // Looks for the `pomogo` command. `command -v` is a shell builtin, so the
-  // probe asks a shell rather than relying on `which` being installed.
+  // Looks for the `pomogo` command. The bar runs widget commands through a
+  // login shell (see qs.Commons.Util.execDetached), so the probe has to look
+  // in the same place: a plain shell would miss a command that only the
+  // login PATH carries.
   Process {
     id: probe
-    command: ["sh", "-c", "command -v pomogo >/dev/null 2>&1"]
+    command: ["bash", "-lc", "command -v pomogo >/dev/null 2>&1"]
     onExited: function(exitCode) {
       root.pomogoInstalled = exitCode === 0
       root.pomogoProbed = true

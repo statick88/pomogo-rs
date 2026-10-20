@@ -104,8 +104,19 @@ TestCase {
     verify(shows(widget), "the widget asks for no label when the pomogo command is missing")
     verify(widget.tooltip.indexOf("pomogo") !== -1,
       "the tooltip does not name the missing command: " + widget.tooltip)
-    verify(widget.tooltip.indexOf("not installed") !== -1,
-      "the tooltip does not say the command is missing: " + widget.tooltip)
+    verify(widget.tooltip.indexOf("not found on PATH") !== -1,
+      "the tooltip does not say the command was not found: " + widget.tooltip)
+  }
+
+  function test_probe_looks_where_the_bar_looks() {
+    // The bar runs widget commands through a login shell, so a probe that used
+    // a plain shell would miss a command the bar itself can reach.
+    var widget = makeWidget(127, {})
+    var probe = TestControl.processCalls.join(" ")
+    verify(probe.indexOf("bash") !== -1, "the probe does not use bash: " + probe)
+    verify(probe.indexOf("-lc") !== -1, "the probe does not run a login shell: " + probe)
+    verify(probe.indexOf("command -v pomogo") !== -1,
+      "the probe does not look up the command: " + probe)
   }
 
   function test_missing_command_can_be_hidden() {
@@ -114,13 +125,13 @@ TestCase {
   }
 
   function test_live_session_wins_over_a_missing_probe() {
-    // The probe runs with the bar process's PATH, which can differ from the
-    // interactive shell's, so a live session must outrank a missing probe.
+    // A live session proves the command is installed, so it must outrank a
+    // probe that says otherwise.
     var widget = withState({}, 127)
     verify(shows(widget), "the widget hides a live session because the probe missed the command")
     verify(/^\S+ \d{2}:\d{2}$/.test(widget.labelText),
       "unexpected label for a live session: " + widget.labelText)
-    verify(widget.tooltip.indexOf("not installed") === -1,
+    verify(widget.tooltip.indexOf("not found on PATH") === -1,
       "a live session is reported as missing: " + widget.tooltip)
   }
 
@@ -128,7 +139,7 @@ TestCase {
     var widget = makeWidget(0, {})
     verify(widget.pomogoProbed, "the command probe never completed")
     verify(widget.pomogoInstalled, "an installed command was reported as missing")
-    verify(widget.tooltip.indexOf("not installed") === -1,
+    verify(widget.tooltip.indexOf("not found on PATH") === -1,
       "an installed command is reported as missing: " + widget.tooltip)
   }
 
